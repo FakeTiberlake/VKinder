@@ -1,0 +1,8 @@
+pytest~=7.1.2
+import vk_api
+from vk_api.longpoll import VkLongPoll, VkEventType
+from random import randrange
+import sqlalchemy as sq
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError, InvalidRequestError
