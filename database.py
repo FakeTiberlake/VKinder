@@ -1,11 +1,17 @@
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
-from config import group_token
+import configparser
 from random import randrange
 import sqlalchemy as sq
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
+
+# Прочитаем файл с конфигурациями
+
+config = configparser.ConfigParser()  # создаём объекта парсера
+config.read("config.ini")  # читаем конфиг
+print(config['VK']['group_token'])
 
 # Подключимся в БД
 
@@ -23,39 +29,39 @@ longpoll = VkLongPoll(vk)
 session = Session()
 connection = engine.connect()
 
-# Пользователь ВК
 
 class User(Base):
+    """Пользователь ВК"""
     __tablename__ = 'user'
     id = sq.Column(sq.Integer, primary_key=True, autoincrement=True)
     vk_id = sq.Column(sq.Integer, unique=True)
 
-# Избранные анкеты
 
 class DatingUser(Base):
+    """Избранные анкеты"""
     __tablename__ = 'dating_user'
     id = sq.Column(sq.Integer, primary_key=True, autoincrement=True)
-    vk_id = sq.Column(sq.Integer, unique = True)
+    vk_id = sq.Column(sq.Integer, unique=True)
     first_name = sq.Column(sq.String)
     last_name = sq.Column(sq.String)
     marital_status = sq.Column(sq.String)
     city = sq.Column(sq.String)
     link = sq.Column(sq.String)
-    id_user = sq.Column(sq.Integer, sq.ForeignKey('user.id', ondelete = 'CASCADE'))
+    id_user = sq.Column(sq.Integer, sq.ForeignKey('user.id', ondelete='CASCADE'))
 
-# Фото Избранных анкет
 
 class Photos(Base):
+    """Фото избранных анкет"""
     __tablename__ = 'photos'
     id = sq.Column(sq.Integer, primary_key=True, autoincrement=True)
     link_photo = sq.Column(sq.String)
     count_likes = sq.Column(sq.Integer)
     count_comments = sq.Column(sq.Integer)
-    id_dating_user = sq.Column(sq.Integer, sq.ForeignKey('dating_user.id', ondelete = 'CASCADE'))
+    id_dating_user = sq.Column(sq.Integer, sq.ForeignKey('dating_user.id', ondelete='CASCADE'))
 
-# Чёрный список
 
 class BlackList(Base):
+    """Чёрный список"""
     __tablename__ = 'dating_user'
     id = sq.Column(sq.Integer, primary_key=True, autoincrement=True)
     vk_id = sq.Column(sq.Integer, unique=True)
@@ -68,29 +74,28 @@ class BlackList(Base):
 
 
 # Функции работы с базой данных
-
-#Удаление пользователя из чёрного списка
 def delete_db_blacklist(ids):
+    """Удаление пользователя из чёрного списка"""
     current_user = session.query(BlackList).filter_by(vk_id=ids).first()
     session.delete(current_user)
     session.commit()
 
 
-# Удаление пользователя из избранного
 def delete_db_favorites(ids):
+    """Удаление пользователя из избранного"""
     current_user = session.query(DatingUser).filter_by(vk_id=ids).first()
     session.delete(current_user)
     session.commit()
 
 
-# Проверка, зарегистрирован ли пользователь бота в базе данных
 def check_db_master(ids):
+    """Проверка, зарегистрирован ли пользователь бота в базе данных"""
     current_user_id = session.query(User).filter_by(vk_id=ids).first()
     return current_user_id
 
 
-# Проверка, есть ли пользователь в базе данных
 def check_db_user(ids):
+    """Проверка, есть ли пользователь в базе данных"""
     dating_user = session.query(DatingUser).filter_by(
         vk_id=ids).first()
     blocked_user = session.query(BlackList).filter_by(
@@ -98,24 +103,24 @@ def check_db_user(ids):
     return dating_user, blocked_user
 
 
-# Проверка, есть ли пользователь в черном списке
 def check_db_black(ids):
+    """Проверка, есть ли пользователь в черном списке"""
     current_users_id = session.query(User).filter_by(vk_id=ids).first()
     # Найдём все анкеты из чёрного списка, которые добавил этот пользователь
     all_users = session.query(BlackList).filter_by(id_user=current_users_id.id).all()
     return all_users
 
 
-# Проверка, есть ли пользователь в избранном
 def check_db_favorites(ids):
+    """Проверка, есть ли пользователь в избранном"""
     current_users_id = session.query(User).filter_by(vk_id=ids).first()
     # Найдём все анкеты из избранного, которые добавил этот пользователь
     all_all_users = session.query(DatingUser).filter_by(id_user=current_users_id.id).all()
     return all_all_users
 
 
-# Написать сообщение пользователю
 def write_msg(user_id, message, attachment=None):
+    """Написать сообщение пользователю"""
     vk.method('messages.send',
               {'user_id': user_id,
                'message': message,
@@ -123,8 +128,8 @@ def write_msg(user_id, message, attachment=None):
                'attachment': attachment})
 
 
-# Регистрация пользователя
 def register_user(vk_id):
+    """Регистрация пользователя"""
     try:
         new_user = User(
             vk_id=vk_id
@@ -136,8 +141,8 @@ def register_user(vk_id):
         return False
 
 
-# Сохранение выбранного пользователя в базе данных
 def add_user(event_id, vk_id, first_name, last_name, marital_status, city, link, id_user):
+    """Сохранение выбранного пользователя в базе данных"""
     try:
         new_user = DatingUser(
             vk_id=vk_id,
@@ -159,8 +164,8 @@ def add_user(event_id, vk_id, first_name, last_name, marital_status, city, link,
         return False
 
 
-# Сохранение в базе данных фотографий добавленного пользователя
 def add_user_photos(event_id, link_photo, count_likes, count_comments, id_dating_user):
+    """Сохранение в базе данных фотографий добавленного пользователя"""
     try:
         new_user = Photos(
             link_photo=link_photo,
@@ -179,8 +184,9 @@ def add_user_photos(event_id, link_photo, count_likes, count_comments, id_dating
         return False
 
 
-# Добавление пользователя в чёрный список
-def add_to_black_list(event_id, vk_id, first_name, last_name, marital_status, city, link, link_photo, count_likes, id_user):
+def add_to_black_list(event_id, vk_id, first_name, last_name, marital_status, city, link, link_photo, count_likes,
+                      id_user):
+    """Добавление пользователя в чёрный список"""
     try:
         new_user = BlackList(
             vk_id=vk_id,

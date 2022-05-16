@@ -5,6 +5,12 @@ from database import engine, Session, write_msg, register_user, add_user, add_us
     check_db_user, check_db_black, check_db_favorites, check_db_master, delete_db_blacklist, delete_db_favorites
 from config import group_token
 
+# Прочитаем файл с конфигурациями
+
+config = configparser.ConfigParser()  # создаём объекта парсера
+config.read("config.ini")  # читаем конфиг
+print(config['VK']['group_token'])
+
 
 # Работа с VK_API
 vk = vk_api.VkApi(token=group_token)
@@ -12,6 +18,13 @@ longpoll = VkLongPoll(vk)
 # Работа с базой данных
 session = Session()
 connection = engine.connect()
+
+
+class Bot:
+    """Общается с пользователем"""
+
+    def __init__(self):
+        self.token = group_token
 
 
 def loop_bot():
@@ -56,7 +69,7 @@ def menu_bot(id_num):
                 if nums >= len(all_all_users) - 1:
                     write_msg(user_ids, f'Это была последняя анкета.\n'
                                         f'Vkinder - вернуться в меню\n')
-            # Удалить запись из базы данных - ИЗБРАННОЕ
+            # Удалить запись из базы данных - избранное
             elif msg_texts == '1':
                 delete_db_favorites(users.vk_id)
                 write_msg(user_ids, f'Анкета успешно удалена.')
@@ -90,7 +103,8 @@ def menu_bot(id_num):
                 write_msg(ids, 'Vkinder - для активации бота.')
                 break
 
-    if __name__ == '__main__':
+
+    def go_to_menu():
         while True:
             msg_text, user_id = loop_bot()
             if msg_text == "vkinder":
@@ -182,3 +196,8 @@ def menu_bot(id_num):
                 # Перейти в черный список
                 elif msg_text == '0':
                     go_to_blacklist(user_id)
+
+
+    if __name__ == '__main__':
+        go_to_menu()
+        

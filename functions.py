@@ -2,11 +2,18 @@ import vk_api
 import json
 import datetime
 from vk_api.longpoll import VkLongPoll, VkEventType
-from config import group_token, user_token, V
+import configparser
 from vk_api.exceptions import ApiError
 from database import engine, Base, Session, User, DatingUser, Photos, BlackList
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 
+# Прочитаем файл с конфигурациями
+
+config = configparser.ConfigParser()  # создаём объекта парсера
+config.read("config.ini")  # читаем конфиг
+print(config['VK']['group_token'])
+print(config['VK']['user_token'])
+print(config['VK']['V'])
 
 # Работа с ВК
 vk = vk_api.VkApi(token=group_token)
@@ -16,9 +23,15 @@ session = Session()
 connection = engine.connect()
 
 
-# Поиск людей по критериям
+class UserVK:
+    """Пользователь ВК"""
+
+    def __init__(self):
+        self.token = user_token
+
 
 def search_users(sex, age_at, age_to, city):
+    """Ищет людей по критериям"""
     all_persons = []
     link_profile = 'https://vk.com/id'
     vk_ = vk_api.VkApi(token=user_token)
@@ -44,9 +57,8 @@ def search_users(sex, age_at, age_to, city):
         return all_persons
 
 
-# Поиск фотографий
-
 def get_photo(user_owner_id):
+    """Поиск фотографий"""
     vk_ = vk_api.VkApi(token=user_token)
     try:
         response = vk_.method('photos.get',
@@ -72,9 +84,8 @@ def get_photo(user_owner_id):
         return users_photos
 
 
-# Сортировка фотографий по лайкам, удаление лишних элементов
-
 def sort_likes(photos):
+    """Сортировка фотографий по лайкам, удаление лишних элементов"""
     result = []
     for el in photos:
         if el != 'Нет фотографий' and photos != 'Фотографии недоступны':
@@ -82,9 +93,8 @@ def sort_likes(photos):
     return sorted(result)
 
 
-# Создание JSON-файла с результатами
-
 def json_create(lst):
+    """Создание JSON-файла с результатами"""
     today = datetime.date.today()
     today_str = f'{today.day}.{today.month}.{today.year}'
     res = {}
