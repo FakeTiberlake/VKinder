@@ -200,4 +200,3 @@ def menu_bot(id_num):
 
     if __name__ == '__main__':
         go_to_menu()
-        

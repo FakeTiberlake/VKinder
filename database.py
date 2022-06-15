@@ -6,6 +6,8 @@ import sqlalchemy as sq
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
+import psycopg2 as pgsql
+from psycopg2 import OperationalError
 
 # Прочитаем файл с конфигурациями
 
@@ -14,7 +16,6 @@ config.read("config.ini")  # читаем конфиг
 print(config['VK']['group_token'])
 
 # Подключимся в БД
-
 Base = declarative_base()
 
 engine = sq.create_engine('postgresql://user@localhost:5432/vkinder_db',
@@ -22,12 +23,42 @@ engine = sq.create_engine('postgresql://user@localhost:5432/vkinder_db',
 
 Session = sessionmaker(bind=engine)
 
+
 # Работа с ВК
 vk = vk_api.VkApi(token=group_token)
 longpoll = VkLongPoll(vk)
 # Работа с БД
 session = Session()
-connection = engine.connect()
+
+try:
+    connection = engine.connect()
+    cursor = connection.cursor()
+
+except (Exception, Error) as error:
+    print("Ошибка при работе с базой данных", error)
+
+
+class DataBase(object):
+    def __init__(self, location):
+        self.location = os.path.expanduser(location)
+        self.load(self.location)
+
+    def load(self , location):
+       if os.path.exists(location):
+           self._load()
+       else:
+            self.db = {}
+       return True
+
+    def _load(self):
+        self.db = json.load(open(self.location , "r"))
+
+    def dumpdb(self):
+        try:
+            json.dump(self.db , open(self.location, "w+"))
+            return True
+        except:
+            return False
 
 
 class User(Base):
