@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 import psycopg2 as pgsql
 from psycopg2 import OperationalError
+from bson import json_util
 
 # Прочитаем файл с конфигурациями
 
@@ -36,29 +37,6 @@ try:
 
 except (Exception, Error) as error:
     print("Ошибка при работе с базой данных", error)
-
-
-class DataBase(object):
-    def __init__(self, location):
-        self.location = os.path.expanduser(location)
-        self.load(self.location)
-
-    def load(self , location):
-       if os.path.exists(location):
-           self._load()
-       else:
-            self.db = {}
-       return True
-
-    def _load(self):
-        self.db = json.load(open(self.location , "r"))
-
-    def dumpdb(self):
-        try:
-            json.dump(self.db , open(self.location, "w+"))
-            return True
-        except:
-            return False
 
 
 class User(Base):
@@ -189,9 +167,9 @@ def add_user(event_id, vk_id, first_name, last_name, marital_status, city, link,
         write_msg(event_id,
                   'Пользователь успешно добавлен в избранное')
         return True
-    except (IntegrityError, InvalidRequestError):
-        write_msg(event_id,
-                  'Пользователь уже в избранном')
+    except OperationalError:
+        with open('add_user.json', 'w', encoding='utf-8') as file:
+            json.dump(DatingUser, file, indent=2, ascii=False)
         return False
 
 
